@@ -1,0 +1,3 @@
+
+def generator():
+	pass
