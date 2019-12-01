@@ -108,8 +108,8 @@ def save_models(args, epoch):
 
 def main(args):
 	global discriminator, generator
-	discriminator = all_discriminator(args)
-	generator = all_generator(args)
+	discriminator = all_discriminator(args).to(args.device)
+	generator = all_generator(args).to(args.device)
 	optim_disc = optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()))
 	optim_gen = optim.Adam(generator.parameters())
 
