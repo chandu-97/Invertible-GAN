@@ -1,7 +1,6 @@
 import torch.nn as nn
-import numpy as np
 
-from spectral_loss import SpectralNorm
+from models.disc.spectral_loss import SpectralNorm
 
 class MNIST_Linear(nn.Module):
     def __init__(self, img_shape):

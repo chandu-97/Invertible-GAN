@@ -1,5 +1,5 @@
 import torch.nn as nn
-from spectral_loss import SpectralNorm
+from models.disc.spectral_loss import SpectralNorm
 
 leak = 0.1
 
