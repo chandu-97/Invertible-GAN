@@ -63,7 +63,6 @@ def train(args, train_loader, optim_disc, optim_gen, latent_dim):
 			optim_disc.step()
 
 		z = torch.randn(args.batch_size, *latent_dim, requires_grad=True).to(args.device)
-
 		# update generator
 		optim_disc.zero_grad()
 		optim_gen.zero_grad()
