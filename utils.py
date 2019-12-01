@@ -2,6 +2,31 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+
+def data_loader(args):
+    transform_train = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor()
+    ])
+
+    transform_test = transforms.Compose([
+        transforms.ToTensor()
+    ])
+
+    if args.dataset=="MNIST":
+        trainset = torchvision.datasets.MNIST(root='data', train=True, download=True, transform=transform_train)
+        testset = torchvision.datasets.MNIST(root='data', train=False, download=True, transform=transform_test)
+        trainloader = data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+        testloader = data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+        return trainloader, testloader
+    elif args.dataset=="CIFAR":
+        trainset = torchvision.datasets.CIFAR10(root='data', train=True, download=True, transform=transform_train)
+        testset = torchvision.datasets.CIFAR10(root='data', train=False, download=True, transform=transform_test)
+        trainloader = data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+        testloader = data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+        return trainloader, testloader
+
+
 def squeeze_2x2(x, reverse=False, alt_order=False):
     """For each spatial position, a sub-volume of shape `1x1x(N^2 * C)`,
     reshape into a sub-volume of shape `NxNxC`, where `N = block_size`.
