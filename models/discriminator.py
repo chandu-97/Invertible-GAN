@@ -4,7 +4,7 @@ from models.disc.celeba import *
 
 def all_discriminator(args):
 	if args.dataset == "MNIST":
-		img_shape = 28*28*3
+		img_shape = 28*28*1
 		return MNIST_Linear(img_shape)
 	elif args.dataset == "CIFAR":
 		return CIFAR_Disc()
