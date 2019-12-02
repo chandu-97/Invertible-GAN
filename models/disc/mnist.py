@@ -11,7 +11,6 @@ class MNIST_Linear(nn.Module):
             nn.Linear(512, 256),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(256, 1),
-            nn.Sigmoid(),
         )
 
     def forward(self, img):

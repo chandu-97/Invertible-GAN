@@ -9,10 +9,12 @@ import torch.utils.data as data
 def data_loader(args):
     if args.dataset=="MNIST":
         transform_train = transforms.Compose([
-            transforms.ToTensor()
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,), (0.5,)),
         ])
         transform_test = transforms.Compose([
-            transforms.ToTensor()
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,), (0.5,)),
         ])
         trainset = torchvision.datasets.MNIST(root='data', train=True, download=True, transform=transform_train)
         testset = torchvision.datasets.MNIST(root='data', train=False, download=True, transform=transform_test)
@@ -22,42 +24,40 @@ def data_loader(args):
     elif args.dataset=="CIFAR":
         transform_train = transforms.Compose([
             transforms.RandomHorizontalFlip(),
-            transforms.ToTensor()
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ])
         transform_test = transforms.Compose([
-            transforms.ToTensor()
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ])
         trainset = torchvision.datasets.CIFAR10(root='data', train=True, download=True, transform=transform_train)
         testset = torchvision.datasets.CIFAR10(root='data', train=False, download=True, transform=transform_test)
         trainloader = data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
         testloader = data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
         return trainloader, testloader
-
-
-
-def data_loader(args):
-    transform_train = transforms.Compose([
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor()
-    ])
-
-    transform_test = transforms.Compose([
-        transforms.ToTensor()
-    ])
-
-    if args.dataset=="MNIST":
-        trainset = torchvision.datasets.MNIST(root='data', train=True, download=True, transform=transform_train)
-        testset = torchvision.datasets.MNIST(root='data', train=False, download=True, transform=transform_test)
+    elif args.dataset=="CelebA32":
+        transform = transforms.Compose([
+            transforms.Resize(32),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+        trainset = torchvision.datasets.CelebA(root='data', split="train", download=True, transform=transform)
+        testset = torchvision.datasets.CelebA(root='data', split="test", download=True, transform=transform)
         trainloader = data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
         testloader = data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
         return trainloader, testloader
-    elif args.dataset=="CIFAR":
-        trainset = torchvision.datasets.CIFAR10(root='data', train=True, download=True, transform=transform_train)
-        testset = torchvision.datasets.CIFAR10(root='data', train=False, download=True, transform=transform_test)
+    elif args.dataset=="CelebA64":
+        transform = transforms.Compose([
+            transforms.Resize(64),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+        trainset = torchvision.datasets.CelebA(root='data', split="train", download=True, transform=transform)
+        testset = torchvision.datasets.CelebA(root='data', split="test", download=True, transform=transform)
         trainloader = data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
         testloader = data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
         return trainloader, testloader
-
 
 def squeeze_2x2(x, reverse=False, alt_order=False):
     """For each spatial position, a sub-volume of shape `1x1x(N^2 * C)`,

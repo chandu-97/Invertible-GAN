@@ -22,7 +22,6 @@ class CIFAR_Disc(nn.Module):
             nn.LeakyReLU(),
             nn.Dropout(0.5),
             nn.Linear(128, 1),
-            nn.Sigmoid()
         )
 
     def forward(self, x):
