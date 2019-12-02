@@ -26,21 +26,21 @@ def parse_args():
 	parser.add_argument('--disc_iters', type=int, default=5)
 	parser.add_argument('--num_epochs', type=int, default=200)
 	parser.add_argument('--checkpoint_dir', type=str, default="")
-	parser.add_argument('--is_realnvp', type=bool, default=True)
+	parser.add_argument('--is_realnvp', type=bool, default=False)
 	parser.add_argument('--loss', type=str, default="hinge")
 	args = parser.parse_args()
 	if args.device == 'cuda':
 		args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 	if args.checkpoint_dir == "":
 		args.checkpoint_dir = "checkpoint_" + f"num_epochs_{args.num_epochs}_" + \
-							  f"dataset_{args.dataset}_" + f"batch_size_{args.batch_size}_"\
+							  f"dataset_{args.dataset}_" + f"batch_size_{args.batch_size}_" + f"loss_{args.loss}_"\
 							  "time_" + str(datetime.datetime.now().time())
 	return args
 
 
 def sample(args, fixed_latent, epoch, batch):
 	global discriminator, generator
-	samples, _ = generator(fixed_latent)
+	samples, _ = generator(fixed_latent, reverse=True)
 	samples = samples.cpu().data.numpy()[:64]
 	fig = plt.figure(figsize=(8, 8))
 	gs = gridspec.GridSpec(8, 8)
@@ -57,8 +57,9 @@ def sample(args, fixed_latent, epoch, batch):
 	if not os.path.exists(args.checkpoint_dir): os.makedirs(args.checkpoint_dir)
 	output_folder = os.path.join(args.checkpoint_dir, 'out')
 	if not os.path.exists(output_folder): os.makedirs(output_folder)
-	plt.savefig(os.path.join(output_folder, '/{}_{}.png').format(str(epoch).zfill(3), str(batch).zfill(3)),
-				bbox_inches='tight')
+	file_name = os.path.join(output_folder, '{}_{}.png'.format(str(epoch).zfill(3), str(batch).zfill(3)))
+	print(file_name)
+	plt.savefig(file_name, bbox_inches='tight')
 	plt.close(fig)
 
 
@@ -72,24 +73,23 @@ def train(args, train_loader, optim_disc, optim_gen, latent_dim, epoch, fixed_la
 		data, target = torch.tensor(data).to(args.device), torch.tensor(target).to(args.device)
 
 		# update discriminator
-		for _ in range(args.disc_iters):
-			z = torch.randn(args.batch_size, *latent_dim, requires_grad=True).to(args.device)
-			optim_disc.zero_grad()
-			optim_gen.zero_grad()
-			gen_data, _ = generator(z, reverse=True)
-			if args.loss == 'hinge':
-				disc_loss = nn.ReLU()(1.0 - discriminator(data)).mean() + nn.ReLU()(1.0 + discriminator(gen_data)).mean()
-			elif args.loss == 'wasserstein':
-				disc_loss = -discriminator(data).mean() + discriminator(gen_data).mean()
-			elif args.loss == 'bce':
-				disc_loss = nn.BCEWithLogitsLoss()(discriminator(data),
-												   torch.ones(args.batch_size, 1, requires_grad=True).to(args.device)) + \
-							nn.BCEWithLogitsLoss()(discriminator(gen_data),
-												   torch.zeros(args.batch_size, 1, requires_grad=True).to(args.device))
-			else:
-				raise
-			disc_loss.backward()
-			optim_disc.step()
+		z = torch.randn(args.batch_size, *latent_dim, requires_grad=True).to(args.device)
+		optim_disc.zero_grad()
+		optim_gen.zero_grad()
+		gen_data, _ = generator(z, reverse=True)
+		if args.loss == 'hinge':
+			disc_loss = nn.ReLU()(1.0 - discriminator(data)).mean() + nn.ReLU()(1.0 + discriminator(gen_data)).mean()
+		elif args.loss == 'wasserstein':
+			disc_loss = -discriminator(data).mean() + discriminator(gen_data).mean()
+		elif args.loss == 'bce':
+			disc_loss = nn.BCEWithLogitsLoss()(discriminator(data),
+												torch.ones(args.batch_size, 1, requires_grad=True).to(args.device)) + \
+						nn.BCEWithLogitsLoss()(discriminator(gen_data),
+												torch.zeros(args.batch_size, 1, requires_grad=True).to(args.device))
+		else:
+			raise
+		disc_loss.backward()
+		optim_disc.step()
 
 		z = torch.randn(args.batch_size, *latent_dim, requires_grad=True).to(args.device)
 		# update generator
@@ -106,12 +106,12 @@ def train(args, train_loader, optim_disc, optim_gen, latent_dim, epoch, fixed_la
 		gen_loss.backward()
 		optim_gen.step()
 
-		cumulative_disc_loss += disc_loss.data[0]
-		cumulative_gen_loss += gen_loss.data[0]
+		cumulative_disc_loss += disc_loss.item()
+		cumulative_gen_loss += gen_loss.item()
 		if batch_idx%20 == 0:
 			sample(args, fixed_latent, epoch, batch_idx)
 			print("[Epoch:{}] ".format(epoch) + "[Batch : {}/{}]".format(batch_idx+1, len(train_loader)) + \
-				  'Discriminator loss: ', disc_loss.data[0], 'Generator loss: ', gen_loss.data[0])
+				  'Discriminator loss: ', disc_loss.item(), 'Generator loss: ', gen_loss.item())
 			print("Cumulative Generator Loss : {}, Cumulative Discriminator Loss : {}".format(cumulative_gen_loss/(batch_idx+1),
 																							  cumulative_disc_loss/(batch_idx+1)))
 	return cumulative_gen_loss/len(train_loader), cumulative_gen_loss/len(train_loader)
@@ -132,16 +132,19 @@ def main(args):
 	generator = all_generator(args).to(args.device)
 	optim_disc = optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()))
 	optim_gen = optim.Adam(generator.parameters())
-	if args.dataset == "CIFAR":
-		latent_dim = (3,32,32)
-	elif args.dataset == "MNIST":
-		latent_dim = (1,28,28)
-	elif args.dataset == "CelebA32":
-		latent_dim = (3,32,32)
-	elif args.dataset == "CelebA64":
-		latent_dim = (3,64,64)
+	if args.is_realnvp:
+		if args.dataset == "CIFAR":
+			latent_dim = (3,32,32)
+		elif args.dataset == "MNIST":
+			latent_dim = (1,28,28)
+		elif args.dataset == "CelebA32":
+			latent_dim = (3,32,32)
+		elif args.dataset == "CelebA64":
+			latent_dim = (3,64,64)
+		else:
+			raise
 	else:
-		raise
+		latent_dim = (100,1,1)
 	fixed_latent = torch.randn(args.batch_size, *latent_dim, requires_grad=True).to(args.device)
 	train_loader, _ = data_loader(args)
 	for epoch in range(1, args.num_epochs+1):

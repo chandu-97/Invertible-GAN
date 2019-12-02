@@ -7,7 +7,7 @@ class CelebA_32_Gen(nn.Module):
         self.ngpu = ngpu
         self.main = nn.Sequential(
             # input is Z, going into a convolution
-            nn.ConvTranspose2d(     nz, ngf * 8, 4, 1, 0, bias=False),
+            nn.ConvTranspose2d(nz, ngf * 8, 4, 1, 0, bias=False),
             nn.BatchNorm2d(ngf * 8),
             nn.ReLU(True),
             # state size. (ngf*8) x 4 x 4
@@ -26,12 +26,12 @@ class CelebA_32_Gen(nn.Module):
             nn.Tanh()
         )
 
-    def forward(self, input):
+    def forward(self, input, reverse=True):
         if input.is_cuda and self.ngpu > 1:
             output = nn.parallel.data_parallel(self.main, input, range(self.ngpu))
         else:
             output = self.main(input)
-        return output
+        return output,0
 
 
 class CelebA_64_Gen(nn.Module):
@@ -58,6 +58,6 @@ class CelebA_64_Gen(nn.Module):
             nn.ConvTranspose2d(64, 3, 4, 2, 1, bias=False),
             nn.Tanh())
 
-    def forward(self, x):
+    def forward(self, x, reverse=True):
         x = self.linear(x).view(x.size(0), -1, 4, 4)
-        return self.features(x)
+        return self.features(x),0
