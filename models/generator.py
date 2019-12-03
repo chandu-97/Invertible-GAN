@@ -25,7 +25,7 @@ class RealNVP_GAN(nn.Module):
 def all_generator(args):
 	if args.is_realnvp:
 		if (args.dataset == "CIFAR") or (args.dataset == "CelebA32"):
-			return RealNVP_GAN(num_scales=2, in_channels=3, mid_channels=32, num_blocks=8)
+			return RealNVP_GAN(num_scales=2, in_channels=3, mid_channels=64, num_blocks=8)
 		elif args.dataset == "MNIST":
 			return RealNVP_GAN(num_scales=2, in_channels=1, mid_channels=64, num_blocks=8)
 		elif args.dataset == "CelebA64":

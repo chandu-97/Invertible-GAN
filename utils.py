@@ -39,6 +39,7 @@ def data_loader(args):
     elif args.dataset=="CelebA32":
         transform = transforms.Compose([
             transforms.Resize(32),
+            transforms.CenterCrop(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
@@ -50,6 +51,7 @@ def data_loader(args):
     elif args.dataset=="CelebA64":
         transform = transforms.Compose([
             transforms.Resize(64),
+            transforms.CenterCrop(64),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])

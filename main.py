@@ -15,7 +15,8 @@ from utils import data_loader
 # GLOBAL VARS
 discriminator = None
 generator = None
-
+scheduler_d = None
+scheduler_g = None
 
 def parse_args():
 	parser = argparse.ArgumentParser(description="Invertible GAN(RealNVP and Spectral Norm loss)")
@@ -23,11 +24,15 @@ def parse_args():
 	parser.add_argument('--num_workers', type=int, default=1)
 	parser.add_argument('--dataset', type=str, default="CIFAR")
 	parser.add_argument('--device', type=str, default='cuda')
-	parser.add_argument('--disc_iters', type=int, default=5)
 	parser.add_argument('--num_epochs', type=int, default=200)
 	parser.add_argument('--checkpoint_dir', type=str, default="")
-	parser.add_argument('--is_realnvp', type=bool, default=False)
+	parser.add_argument('--is_realnvp', type=int, default=0)
+	parser.add_argument('--is_spectral', type=int, default=0)
+	parser.add_argument('--leak', type=float, default=0.1)
 	parser.add_argument('--loss', type=str, default="hinge")
+	parser.add_argument('--lr', type=float, default=2e-4)
+	parser.add_argument('--b1', type=float, default=0.0)
+	parser.add_argument('--b2', type=float, default=0.9)
 	args = parser.parse_args()
 	if args.device == 'cuda':
 		args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -39,7 +44,7 @@ def parse_args():
 
 
 def sample(args, fixed_latent, epoch, batch):
-	global discriminator, generator
+	global discriminator, generator, scheduler_g, scheduler_d
 	samples, _ = generator(fixed_latent, reverse=True)
 	samples = samples.cpu().data.numpy()[:64]
 	fig = plt.figure(figsize=(8, 8))
@@ -52,7 +57,10 @@ def sample(args, fixed_latent, epoch, batch):
 		ax.set_xticklabels([])
 		ax.set_yticklabels([])
 		ax.set_aspect('equal')
-		plt.imshow(sample.transpose((1, 2, 0)) * 0.5 + 0.5)
+		if sample.shape[0]!=1:
+			plt.imshow(sample.transpose((1, 2, 0)) * 0.5 + 0.5)
+		else:
+			plt.imshow(sample[0] * 0.5 + 0.5)
 
 	if not os.path.exists(args.checkpoint_dir): os.makedirs(args.checkpoint_dir)
 	output_folder = os.path.join(args.checkpoint_dir, 'out')
@@ -64,7 +72,7 @@ def sample(args, fixed_latent, epoch, batch):
 
 
 def train(args, train_loader, optim_disc, optim_gen, latent_dim, epoch, fixed_latent):
-	global discriminator, generator
+	global discriminator, generator, scheduler_g, scheduler_d
 	cumulative_gen_loss = 0.0
 	cumulative_disc_loss = 0.0
 	for batch_idx, (data, target) in enumerate(train_loader):
@@ -114,10 +122,12 @@ def train(args, train_loader, optim_disc, optim_gen, latent_dim, epoch, fixed_la
 				  'Discriminator loss: ', disc_loss.item(), 'Generator loss: ', gen_loss.item())
 			print("Cumulative Generator Loss : {}, Cumulative Discriminator Loss : {}".format(cumulative_gen_loss/(batch_idx+1),
 																							  cumulative_disc_loss/(batch_idx+1)))
+	scheduler_d.step()
+	scheduler_g.step()
 	return cumulative_gen_loss/len(train_loader), cumulative_gen_loss/len(train_loader)
 
 def test(args, fixed_latent, epoch):
-	global discriminator, generator
+	global discriminator, generator, scheduler_g, scheduler_d
 	pass
 
 def save_models(args, epoch):
@@ -126,12 +136,19 @@ def save_models(args, epoch):
 
 
 def main(args):
-	global discriminator, generator
+	global discriminator, generator, scheduler_g, scheduler_d
 	print(args)
 	discriminator = all_discriminator(args).to(args.device)
 	generator = all_generator(args).to(args.device)
-	optim_disc = optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()))
-	optim_gen = optim.Adam(generator.parameters())
+	optim_disc = optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()), 
+							lr=args.lr,
+							betas=(args.b1, args.b2))
+	optim_gen = optim.Adam(generator.parameters(),
+							lr=args.lr,
+							betas=(args.b1, args.b2))
+	scheduler_d = optim.lr_scheduler.ExponentialLR(optim_disc, gamma=0.99)
+	scheduler_g = optim.lr_scheduler.ExponentialLR(optim_gen, gamma=0.99)
+
 	if args.is_realnvp:
 		if args.dataset == "CIFAR":
 			latent_dim = (3,32,32)
