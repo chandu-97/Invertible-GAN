@@ -20,10 +20,13 @@ scheduler_g = None
 
 def parse_args():
 	parser = argparse.ArgumentParser(description="Invertible GAN(RealNVP and Spectral Norm loss)")
+	parser.add_argument('--b1', type=float, default=0.0)
+	parser.add_argument('--b2', type=float, default=0.9)
 	parser.add_argument('--batch_size', type=int, default=64)
 	parser.add_argument('--num_workers', type=int, default=1)
 	parser.add_argument('--dataset', type=str, default="CIFAR")
 	parser.add_argument('--device', type=str, default='cuda')
+	parser.add_argument('--disc_iters', type=int, default=1)
 	parser.add_argument('--num_epochs', type=int, default=200)
 	parser.add_argument('--checkpoint_dir', type=str, default="")
 	parser.add_argument('--is_realnvp', type=int, default=0)
@@ -31,15 +34,20 @@ def parse_args():
 	parser.add_argument('--leak', type=float, default=0.1)
 	parser.add_argument('--loss', type=str, default="hinge")
 	parser.add_argument('--lr', type=float, default=2e-4)
-	parser.add_argument('--b1', type=float, default=0.0)
-	parser.add_argument('--b2', type=float, default=0.9)
+	parser.add_argument('--realnvp_num_scales', type=int, default=2)
+	parser.add_argument('--realnvp_num_mid_channels', type=int, default=64)
+	parser.add_argument('--realnvp_num_num_blocks', type=int, default=8)
 	args = parser.parse_args()
 	if args.device == 'cuda':
 		args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 	if args.checkpoint_dir == "":
-		args.checkpoint_dir = "checkpoint_" + f"num_epochs_{args.num_epochs}_" + \
-							  f"dataset_{args.dataset}_" + f"batch_size_{args.batch_size}_" + f"loss_{args.loss}_"\
+		args.checkpoint_dir = f"{args.dataset}_" + f"batch_size_{args.batch_size}_" \
+							  "checkpoint_" + f"num_epochs_{args.num_epochs}_" + f"loss_{args.loss}_"\
 							  "time_" + str(datetime.datetime.now().time())
+		if args.is_spectral: args.checkpoint_dir = "Spectral_" + args.checkpoint_dir
+		if args.is_realnvp:
+			args.checkpoint_dir = f"RealNVP_{args.realnvp_num_scales}_{args.realnvp_num_mid_channels}" \
+								  f"_{args.realnvp_num_num_blocks}" + args.checkpoint_dir
 	return args
 
 
@@ -81,23 +89,24 @@ def train(args, train_loader, optim_disc, optim_gen, latent_dim, epoch, fixed_la
 		data, target = torch.tensor(data).to(args.device), torch.tensor(target).to(args.device)
 
 		# update discriminator
-		z = torch.randn(args.batch_size, *latent_dim, requires_grad=True).to(args.device)
-		optim_disc.zero_grad()
-		optim_gen.zero_grad()
-		gen_data, _ = generator(z, reverse=True)
-		if args.loss == 'hinge':
-			disc_loss = nn.ReLU()(1.0 - discriminator(data)).mean() + nn.ReLU()(1.0 + discriminator(gen_data)).mean()
-		elif args.loss == 'wasserstein':
-			disc_loss = -discriminator(data).mean() + discriminator(gen_data).mean()
-		elif args.loss == 'bce':
-			disc_loss = nn.BCEWithLogitsLoss()(discriminator(data),
-												torch.ones(args.batch_size, 1, requires_grad=True).to(args.device)) + \
-						nn.BCEWithLogitsLoss()(discriminator(gen_data),
-												torch.zeros(args.batch_size, 1, requires_grad=True).to(args.device))
-		else:
-			raise
-		disc_loss.backward()
-		optim_disc.step()
+		for _ in range(args.disc_iters):
+			z = torch.randn(args.batch_size, *latent_dim, requires_grad=True).to(args.device)
+			optim_disc.zero_grad()
+			optim_gen.zero_grad()
+			gen_data, _ = generator(z, reverse=True)
+			if args.loss == 'hinge':
+				disc_loss = nn.ReLU()(1.0 - discriminator(data)).mean() + nn.ReLU()(1.0 + discriminator(gen_data)).mean()
+			elif args.loss == 'wasserstein':
+				disc_loss = -discriminator(data).mean() + discriminator(gen_data).mean()
+			elif args.loss == 'bce':
+				disc_loss = nn.BCEWithLogitsLoss()(discriminator(data),
+													torch.ones(args.batch_size, 1, requires_grad=True).to(args.device)) + \
+							nn.BCEWithLogitsLoss()(discriminator(gen_data),
+													torch.zeros(args.batch_size, 1, requires_grad=True).to(args.device))
+			else:
+				raise
+			disc_loss.backward()
+			optim_disc.step()
 
 		z = torch.randn(args.batch_size, *latent_dim, requires_grad=True).to(args.device)
 		# update generator
