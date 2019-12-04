@@ -131,8 +131,8 @@ def test(args, fixed_latent, epoch):
 	pass
 
 def save_models(args, epoch):
-	torch.save(discriminator.state_dict(), os.path.join(args.checkpoint_dir, f"discriminator_{epoch}"))
-	torch.save(generator.state_dict(), os.path.join(args.checkpoint_dir, f"generator_{epoch}"))
+	torch.save(discriminator, os.path.join(args.checkpoint_dir, f"discriminator_{epoch}.model"))
+	torch.save(generator, os.path.join(args.checkpoint_dir, f"generator_{epoch}.model"))
 
 
 def main(args):
