@@ -32,11 +32,13 @@ def ldim(dataset, is_realnvp):
 def main(args):
 	latent_dim = ldim(args.dataset, args.is_realnvp)
 	model = torch.load(args.generator_path)
+	model.eval()
 	print(model)
-	z = torch.randn(args.batch_size, *latent_dim)
 	image_num = 1
 	if not os.path.exists(args.output_dir): os.makedirs(args.output_dir)
 	for _ in range(args.count//args.batch_size):
+		z = torch.randn(args.batch_size, *latent_dim)
+		z=z.cuda()
 		out, _ = model(z, reverse=True)
 		out = out.to('cpu').data.numpy()
 		out = (out+1.0)/2.0
