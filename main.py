@@ -24,19 +24,22 @@ def parse_args():
 	parser.add_argument('--b2', type=float, default=0.9)
 	parser.add_argument('--batch_size', type=int, default=64)
 	parser.add_argument('--num_workers', type=int, default=1)
-	parser.add_argument('--dataset', type=str, default="CIFAR")
+	parser.add_argument('--dataset', type=str, default="CelebA32")
 	parser.add_argument('--device', type=str, default='cuda')
 	parser.add_argument('--disc_iters', type=int, default=1)
 	parser.add_argument('--num_epochs', type=int, default=200)
 	parser.add_argument('--checkpoint_dir', type=str, default="")
-	parser.add_argument('--is_realnvp', type=int, default=0)
-	parser.add_argument('--is_spectral', type=int, default=0)
+	parser.add_argument('--is_realnvp', type=int, default=1)
+	parser.add_argument('--is_spectral', type=int, default=1)
 	parser.add_argument('--leak', type=float, default=0.1)
 	parser.add_argument('--loss', type=str, default="hinge")
 	parser.add_argument('--lr', type=float, default=2e-4)
 	parser.add_argument('--realnvp_num_scales', type=int, default=2)
 	parser.add_argument('--realnvp_num_mid_channels', type=int, default=64)
 	parser.add_argument('--realnvp_num_num_blocks', type=int, default=8)
+	parser.add_argument("--load_saved_models", type=int, default=0)
+	parser.add_argument("--saved_generator", type=str, default="")
+	parser.add_argument("--saved_discriminator", type=str, default="")
 	args = parser.parse_args()
 	if args.device == 'cuda':
 		args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -139,16 +142,30 @@ def test(args, fixed_latent, epoch):
 	global discriminator, generator, scheduler_g, scheduler_d
 	pass
 
-def save_models(args, epoch):
+def save_models(args, epoch, optim_disc, optim_gen):
 	torch.save(discriminator, os.path.join(args.checkpoint_dir, f"discriminator_{epoch}.model"))
 	torch.save(generator, os.path.join(args.checkpoint_dir, f"generator_{epoch}.model"))
-
+	torch.save({
+            'epoch': epoch,
+            'generator_state_dict': generator.state_dict(),
+            'optim_gen_state_dict': optim_gen.state_dict(),
+	    'scheduler_g_state_dict': scheduler_g.state_dict(),
+            'discriminator_state_dict': discriminator.state_dict(),
+            'optim_disc_state_dict': optim_disc.state_dict(),
+	    'scheduler_d_state_dict': scheduler_d.state_dict()
+            }, os.path.join(args.checkpoint_dir, f"checkpoint_{epoch}.model"))
 
 def main(args):
 	global discriminator, generator, scheduler_g, scheduler_d
 	print(args)
-	discriminator = all_discriminator(args).to(args.device)
-	generator = all_generator(args).to(args.device)
+	if args.load_saved_models:
+		discriminator=torch.load(args.saved_discriminator).to(args.device)
+		discriminator.eval()
+		generator=torch.load(args.saved_generator).to(args.device)
+		generator.eval()
+	else:
+		discriminator = all_discriminator(args).to(args.device)
+		generator = all_generator(args).to(args.device)
 	optim_disc = optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()), 
 							lr=args.lr,
 							betas=(args.b1, args.b2))
@@ -180,7 +197,7 @@ def main(args):
 																				train_gen,
 																				train_dis))
 		test(args, fixed_latent, epoch)
-		save_models(args, epoch)
+		save_models(args, epoch, optim_disc, optim_gen)
 		print("Saved models after Epoch : {}".format(epoch))
 
 if __name__=="__main__":
