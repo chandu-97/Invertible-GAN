@@ -8,6 +8,7 @@ from utils import data_loader
 def parse_args():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--count', type=int, default=50)
+	parser.add_argument('--num_workers', type=int, default=1)
 	parser.add_argument('--batch_size', type=int, default=16)
 	parser.add_argument('--dataset', type=str, default="MNIST")
 	parser.add_argument('--generator_path', type=str, default="model_path")
