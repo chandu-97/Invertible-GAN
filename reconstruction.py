@@ -11,6 +11,7 @@ def parse_args():
 	parser.add_argument('--num_workers', type=int, default=1)
 	parser.add_argument('--batch_size', type=int, default=16)
 	parser.add_argument('--dataset', type=str, default="MNIST")
+	parser.add_argument('--device', type=str, default='cuda')
 	parser.add_argument('--generator_path', type=str, default="model_path")
 	parser.add_argument('--output_dir', type=str, default="images")
 	parser.add_argument('--is_realnvp', type=int, default=1)
