@@ -40,7 +40,7 @@ def main(args):
 	reconstruct_image_num = 1
 	_, test_loader = data_loader(args)
 	if not os.path.exists(args.output_dir): os.makedirs(args.output_dir)
-	for batch_idx, (data, target) in enumerate(train_loader):
+	for batch_idx, (data, target) in enumerate(test_loader):
 		if data.size()[0] != args.batch_size:
 			continue
 		data, target = torch.tensor(data).to(args.device), torch.tensor(target).to(args.device)
