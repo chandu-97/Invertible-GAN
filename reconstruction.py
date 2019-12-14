@@ -45,14 +45,15 @@ def main(args):
 		if data.size()[0] != args.batch_size:
 			continue
 		data, target = torch.tensor(data).to(args.device), torch.tensor(target).to(args.device)
-		z, _ = model(data,reverse=False)
+		data = (data+1.0)/2.0
+		z = model(data,reverse=False)
 		z=z.to(args.device)
-		out, _ = model(data, reverse=True)
+		out, _ = model(z, reverse=True)
 		out = out.to('cpu').data.numpy()
 		out = (out+1.0)/2.0
 		out = np.clip(out,0.0,1.0)
 		for sample in out:
-			out_file = os.path.join(args.output_dir,f"{reconstruct_image_num}.png")
+			out_file = os.path.join(args.output_dir,f"{reconstruct_image_num}reconstruct.png")
 			if sample.shape[0] == 1: sample = sample[0]
 			scmisc.toimage(sample, cmin=0.0, cmax=1.0).save(out_file)
 			reconstruct_image_num += 1
@@ -61,7 +62,7 @@ def main(args):
 		data = (data+1.0)/2.0
 		data = np.clip(data,0.0,1.0)
 		for sample in data:
-			out_file = os.path.join(args.output_dir,f"{real_image_num}.png")
+			out_file = os.path.join(args.output_dir,f"{real_image_num}real.png")
 			if sample.shape[0] == 1: sample = sample[0]
 			scmisc.toimage(sample, cmin=0.0, cmax=1.0).save(out_file)
 			real_image_num += 1

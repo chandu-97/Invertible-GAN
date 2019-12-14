@@ -18,7 +18,8 @@ class RealNVP_GAN(nn.Module):
 			x = torch.clamp(x, min=0.0, max=1.0)
 			return self.real_nvp(x, reverse)
 		else:
-			output = self.real_nvp(x, reverse)
+			output, _ = self.real_nvp(x, reverse)
+			print(output)
 			return 2*output - 1.0
 
 
