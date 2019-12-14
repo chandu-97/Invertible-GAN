@@ -19,7 +19,6 @@ class RealNVP_GAN(nn.Module):
 			return self.real_nvp(x, reverse)
 		else:
 			output, _ = self.real_nvp(x, reverse)
-			print(output)
 			return 2*output - 1.0
 
 
