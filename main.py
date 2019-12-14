@@ -40,6 +40,7 @@ def parse_args():
 	parser.add_argument("--load_saved_models", type=int, default=0)
 	parser.add_argument("--saved_generator", type=str, default="")
 	parser.add_argument("--saved_discriminator", type=str, default="")
+	parser.add_argument("--saved_checkpoint", type=str, default="")
 	args = parser.parse_args()
 	if args.device == 'cuda':
 		args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -158,14 +159,9 @@ def save_models(args, epoch, optim_disc, optim_gen):
 def main(args):
 	global discriminator, generator, scheduler_g, scheduler_d
 	print(args)
-	if args.load_saved_models:
-		discriminator=torch.load(args.saved_discriminator).to(args.device)
-		discriminator.eval()
-		generator=torch.load(args.saved_generator).to(args.device)
-		generator.eval()
-	else:
-		discriminator = all_discriminator(args).to(args.device)
-		generator = all_generator(args).to(args.device)
+	epoch=1
+	discriminator = all_discriminator(args).to(args.device)
+	generator = all_generator(args).to(args.device)
 	optim_disc = optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()), 
 							lr=args.lr,
 							betas=(args.b1, args.b2))
@@ -174,7 +170,19 @@ def main(args):
 							betas=(args.b1, args.b2))
 	scheduler_d = optim.lr_scheduler.ExponentialLR(optim_disc, gamma=0.99)
 	scheduler_g = optim.lr_scheduler.ExponentialLR(optim_gen, gamma=0.99)
-
+	
+	if args.load_saved_models:
+		checkpoint = torch.load(args.saved_checkpoint)
+		epoch=checkpoint['epoch']
+		discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
+		generator.load_state_dict(checkpoint['generator_state_dict'])
+		optim_disc.load_state_dict(checkpoint['optim_disc_state_dict'])
+		optim_gen.load_state_dict(checkpoint['optim_gen_state_dict'])
+		scheduler_d.load_state_dict(checkpoint['scheduler_d_state_dict'])
+		scheduler_g.load_state_dict(checkpoint['scheduler_g_state_dict'])
+		generator.train()
+		discriminator.train()
+	
 	if args.is_realnvp:
 		if args.dataset == "CIFAR":
 			latent_dim = (3,32,32)
@@ -190,7 +198,7 @@ def main(args):
 		latent_dim = (100,1,1)
 	fixed_latent = torch.randn(args.batch_size, *latent_dim, requires_grad=True).to(args.device)
 	train_loader, _ = data_loader(args)
-	for epoch in range(1, args.num_epochs+1):
+	for epoch in range(epoch, args.num_epochs+1):
 		train_gen, train_dis = train(args, train_loader, optim_disc, optim_gen, latent_dim, epoch, fixed_latent)
 		print('*'*70)
 		print("Epoch : {}, Generator Loss : {}, Discriminator Loss : {}".format(epoch,
