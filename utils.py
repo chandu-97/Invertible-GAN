@@ -8,14 +8,27 @@ import torch.utils.data as data
 
 def data_loader(args):
     if args.dataset=="MNIST":
-        transform_train = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,), (0.5,)),
-        ])
-        transform_test = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,), (0.5,)),
-        ])
+        if args.is_irevnet:
+            transform_train = transforms.Compose([
+                transforms.Resize((32,32)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5,), (0.5,)),
+            ])
+            transform_test = transforms.Compose([
+                transforms.Resize((32,32)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5,), (0.5,)),
+            ])
+
+        else:
+            transform_train = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.5,), (0.5,)),
+            ])
+            transform_test = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.5,), (0.5,)),
+            ])
         trainset = torchvision.datasets.MNIST(root='data', train=True, download=True, transform=transform_train)
         testset = torchvision.datasets.MNIST(root='data', train=False, download=True, transform=transform_test)
         trainloader = data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)

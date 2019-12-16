@@ -19,7 +19,7 @@ scheduler_d = None
 scheduler_g = None
 
 def parse_args():
-	parser = argparse.ArgumentParser(description="Invertible GAN(RealNVP and Spectral Norm loss)")
+	parser = argparse.ArgumentParser(description="Invertible GAN(RealNVP, iRevNet and Spectral Norm loss)")
 	parser.add_argument('--b1', type=float, default=0.0)
 	parser.add_argument('--b2', type=float, default=0.9)
 	parser.add_argument('--batch_size', type=int, default=64)
@@ -30,6 +30,7 @@ def parse_args():
 	parser.add_argument('--num_epochs', type=int, default=200)
 	parser.add_argument('--checkpoint_dir', type=str, default="")
 	parser.add_argument('--is_realnvp', type=int, default=1)
+	parser.add_argument('--is_irevnet', type=int, default=1)
 	parser.add_argument('--is_spectral', type=int, default=1)
 	parser.add_argument('--leak', type=float, default=0.1)
 	parser.add_argument('--loss', type=str, default="hinge")
@@ -57,7 +58,13 @@ def parse_args():
 
 def sample(args, fixed_latent, epoch, batch):
 	global discriminator, generator, scheduler_g, scheduler_d
-	samples, _ = generator(fixed_latent, reverse=True)
+	if args.is_realnvp:
+		samples, _ = generator(fixed_latent, reverse=True)
+	elif args.is_irevnet and args.dataset == "MNIST":
+		_, samples = generator(fixed_latent)
+		print(samples.shape)
+		samples = samples.reshape(samples.shape[0], 1, 32, 32)
+
 	samples = samples.cpu().data.numpy()[:64]
 	fig = plt.figure(figsize=(8, 8))
 	gs = gridspec.GridSpec(8, 8)
@@ -97,7 +104,12 @@ def train(args, train_loader, optim_disc, optim_gen, latent_dim, epoch, fixed_la
 			z = torch.randn(args.batch_size, *latent_dim, requires_grad=True).to(args.device)
 			optim_disc.zero_grad()
 			optim_gen.zero_grad()
-			gen_data, _ = generator(z, reverse=True)
+			if args.is_realnvp:
+				gen_data, _ = generator(z, reverse=True)
+			elif args.is_irevnet and args.dataset == "MNIST":
+				_, gen_data = generator(z)
+				gen_data = gen_data.reshape(gen_data.shape[0], 1, 32, 32)
+
 			if args.loss == 'hinge':
 				disc_loss = nn.ReLU()(1.0 - discriminator(data)).mean() + nn.ReLU()(1.0 + discriminator(gen_data)).mean()
 			elif args.loss == 'wasserstein':
@@ -116,7 +128,12 @@ def train(args, train_loader, optim_disc, optim_gen, latent_dim, epoch, fixed_la
 		# update generator
 		optim_disc.zero_grad()
 		optim_gen.zero_grad()
-		gen_data, _ = generator(z, reverse=True)
+		if args.is_realnvp:
+			gen_data, _ = generator(z, reverse=True)
+		elif args.is_irevnet and args.dataset == "MNIST":
+			_, gen_data = generator(z)
+			gen_data = gen_data.reshape(gen_data.shape[0], 1, 32, 32)
+
 		if args.loss == 'hinge' or args.loss == 'wasserstein':
 			gen_loss = -discriminator(gen_data).mean()
 		elif args.loss == 'bce':
@@ -162,6 +179,12 @@ def main(args):
 	epoch=1
 	discriminator = all_discriminator(args).to(args.device)
 	generator = all_generator(args).to(args.device)
+	print("*"*75)
+	print("Discriminator: ")
+	print(discriminator)
+	print("*"*75)
+	print("Generator: ")
+	print(generator)
 	optim_disc = optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()), 
 							lr=args.lr,
 							betas=(args.b1, args.b2))
@@ -192,6 +215,11 @@ def main(args):
 			latent_dim = (3,32,32)
 		elif args.dataset == "CelebA64":
 			latent_dim = (3,64,64)
+		else:
+			raise
+	elif args.is_irevnet:
+		if args.dataset == "MNIST":
+			latent_dim = (4,8,8)
 		else:
 			raise
 	else:
