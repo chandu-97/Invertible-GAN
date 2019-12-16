@@ -52,6 +52,42 @@ def all_generator(args):
 							nChannels=nChannels, nClasses=nClasses,
 							init_ds=init_ds, dropout_rate=0.0, affineBN=True,
 							in_shape=in_shape, mult=bottleneck_mult)
+		elif args.dataset == "CIFAR":
+			nClasses = 10
+			in_shape = [8,8,8]
+			bottleneck_mult = 4
+			init_ds = 0
+			nBlocks = [18, 18, 18]
+			nStrides = [1, 2, 2]
+			nChannels = [8*3, 32*3, 128*3]
+			return iRevNet(nBlocks=nBlocks, nStrides=nStrides,
+							nChannels=nChannels, nClasses=nClasses,
+							init_ds=init_ds, dropout_rate=0.0, affineBN=True,
+							in_shape=in_shape, mult=bottleneck_mult)
+		elif args.dataset == "CelebA32":
+			nClasses = 10
+			in_shape = [8,8,8]
+			bottleneck_mult = 4
+			init_ds = 0
+			nBlocks = [18, 18, 18]
+			nStrides = [1, 2, 2]
+			nChannels = [8*3, 32*3, 128*3]
+			return iRevNet(nBlocks=nBlocks, nStrides=nStrides,
+							nChannels=nChannels, nClasses=nClasses,
+							init_ds=init_ds, dropout_rate=0.0, affineBN=True,
+							in_shape=in_shape, mult=bottleneck_mult)
+		elif args.dataset == "CelebA64":
+			nClasses = 10
+			in_shape = [8,16,16]
+			bottleneck_mult = 4
+			init_ds = 0
+			nBlocks = [18, 18, 18]
+			nStrides = [1, 2, 2]
+			nChannels = [8*3, 32*3, 128*3]
+			return iRevNet(nBlocks=nBlocks, nStrides=nStrides,
+							nChannels=nChannels, nClasses=nClasses,
+							init_ds=init_ds, dropout_rate=0.0, affineBN=True,
+							in_shape=in_shape, mult=bottleneck_mult)
 		else:
 			raise
 	else:

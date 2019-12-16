@@ -53,6 +53,8 @@ def parse_args():
 		if args.is_realnvp:
 			args.checkpoint_dir = f"RealNVP_{args.realnvp_num_scales}_{args.realnvp_num_mid_channels}" \
 								  f"_{args.realnvp_num_num_blocks}" + args.checkpoint_dir
+		elif args.is_irevnet:
+			args.checkpoint_dir = f"IRevNet_" + args.checkpoint_dir
 	return args
 
 
@@ -60,10 +62,25 @@ def sample(args, fixed_latent, epoch, batch):
 	global discriminator, generator, scheduler_g, scheduler_d
 	if args.is_realnvp:
 		samples, _ = generator(fixed_latent, reverse=True)
-	elif args.is_irevnet and args.dataset == "MNIST":
-		_, samples = generator(fixed_latent)
-		print(samples.shape)
-		samples = samples.reshape(samples.shape[0], 1, 32, 32)
+	elif args.is_irevnet:
+		if args.dataset == "MNIST":
+			_, samples = generator(fixed_latent)
+			print(samples.shape)
+			samples = samples.reshape(samples.shape[0], 1, 32, 32)
+		elif args.dataset == "CIFAR":
+			_, samples = generator(fixed_latent)
+			print(samples.shape)
+			samples = samples.reshape(samples.shape[0], 3, 32, 32)
+		elif args.dataset == "CelebA32":
+			_, samples = generator(fixed_latent)
+			print(samples.shape)
+			samples = samples.reshape(samples.shape[0], 3, 32, 32)
+		elif args.dataset == "CelebA64":
+			_, samples = generator(fixed_latent)
+			print(samples.shape)
+			samples = samples.reshape(samples.shape[0], 3, 64, 64)
+		else:
+			raise
 
 	samples = samples.cpu().data.numpy()[:64]
 	fig = plt.figure(figsize=(8, 8))
@@ -106,9 +123,21 @@ def train(args, train_loader, optim_disc, optim_gen, latent_dim, epoch, fixed_la
 			optim_gen.zero_grad()
 			if args.is_realnvp:
 				gen_data, _ = generator(z, reverse=True)
-			elif args.is_irevnet and args.dataset == "MNIST":
-				_, gen_data = generator(z)
-				gen_data = gen_data.reshape(gen_data.shape[0], 1, 32, 32)
+			elif args.is_irevnet :
+				if args.dataset == "MNIST":
+					_, gen_data = generator(z)
+					gen_data = gen_data.reshape(gen_data.shape[0], 1, 32, 32)
+				elif args.dataset == "CIFAR":
+					_, gen_data = generator(z)
+					gen_data = gen_data.reshape(gen_data.shape[0], 3, 32, 32)
+				elif args.dataset == "CelebA32":
+					_, gen_data = generator(z)
+					gen_data = gen_data.reshape(gen_data.shape[0], 3, 32, 32)
+				elif args.dataset == "CelebA64":
+					_, gen_data = generator(z)
+					gen_data = gen_data.reshape(gen_data.shape[0], 3, 64, 64)
+				else:
+					raise
 
 			if args.loss == 'hinge':
 				disc_loss = nn.ReLU()(1.0 - discriminator(data)).mean() + nn.ReLU()(1.0 + discriminator(gen_data)).mean()
@@ -130,9 +159,21 @@ def train(args, train_loader, optim_disc, optim_gen, latent_dim, epoch, fixed_la
 		optim_gen.zero_grad()
 		if args.is_realnvp:
 			gen_data, _ = generator(z, reverse=True)
-		elif args.is_irevnet and args.dataset == "MNIST":
-			_, gen_data = generator(z)
-			gen_data = gen_data.reshape(gen_data.shape[0], 1, 32, 32)
+		elif args.is_irevnet:
+			if args.dataset == "MNIST":
+				_, gen_data = generator(z)
+				gen_data = gen_data.reshape(gen_data.shape[0], 1, 32, 32)
+			elif args.dataset == "CIFAR":
+				_, gen_data = generator(z)
+				gen_data = gen_data.reshape(gen_data.shape[0], 3, 32, 32)
+			elif args.dataset == "CelebA32":
+				_, gen_data = generator(z)
+				gen_data = gen_data.reshape(gen_data.shape[0], 3, 32, 32)
+			elif args.dataset == "CelebA64":
+				_, gen_data = generator(z)
+				gen_data = gen_data.reshape(gen_data.shape[0], 3, 64, 64)
+			else:
+				raise
 
 		if args.loss == 'hinge' or args.loss == 'wasserstein':
 			gen_loss = -discriminator(gen_data).mean()
@@ -220,6 +261,12 @@ def main(args):
 	elif args.is_irevnet:
 		if args.dataset == "MNIST":
 			latent_dim = (4,8,8)
+		elif args.dataset == "CIFAR":
+			latent_dim = (8,8,8)
+		elif args.dataset == "CelebA32":
+			latent_dim = (8,8,8)
+		elif args.dataset == "CelebA64":
+			latent_dim = (8,16,16)
 		else:
 			raise
 	else:
