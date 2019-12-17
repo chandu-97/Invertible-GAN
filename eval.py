@@ -75,6 +75,7 @@ def main(args):
 			if sample.shape[0] == 1: sample = sample[0]
 			if args.dataset=="MNIST":
 				sample = np.array(Image.fromarray(sample).resize((28,28), resample=Image.BICUBIC))
+				sample = np.array([sample, sample, sample])
 			scmisc.toimage(sample, cmin=0.0, cmax=1.0).save(out_file)
 			image_num += 1
 
